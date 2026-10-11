@@ -306,16 +306,16 @@ run_choice() {
     17) confirm_and_run "apt install tcptraceroute -y && wget http://www.vdberg.org/~richard/tcpping -O /usr/bin/tcping && chmod +x /usr/bin/tcping" ;;
     18) confirm_and_run "bash <(curl -Ls https://raw.githubusercontent.com/nxtrace/NTrace-core/main/nt_install.sh)" ;;
     19) confirm_and_run "apt install mtr-tiny -y" ;;
-    20) confirm_and_run "bash <(curl -Ls https://realm.shuijiao.de)" ;;
+    20) confirm_and_run "bash <(curl -Ls https://realm.siaoz.si)" ;;
     21) confirm_and_run "curl -fsSL https://get.docker.com | bash && systemctl enable --now docker" ;;
     22) confirm_and_run "curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh -o quick_start.sh && bash quick_start.sh" ;;
     23) confirm_and_run_block "BBR 32MB 缓冲" "$BBR_32" ;;
     24) confirm_and_run_block "BBR 64MB 缓冲" "$BBR_64" ;;
     25) port="$(ask_port '请输入当前 SSH 端口')"; confirm_and_run "apt install ufw -y && ufw allow '${port}'/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw enable && ufw status verbose" ;;
     26) confirm_and_run "apt install fail2ban -y && systemctl enable --now fail2ban && systemctl status fail2ban --no-pager" ;;
-    27) confirm_and_run "bash <(curl -Ls https://anytls.shuijiao.de)" ;;
-    28) confirm_and_run "bash <(curl -Ls https://ss.shuijiao.de)" ;;
-    29) confirm_and_run "bash <(curl -Ls https://xray.shuijiao.de)" ;;
+    27) confirm_and_run "bash <(curl -Ls https://anytls.siaoz.si)" ;;
+    28) confirm_and_run "bash <(curl -Ls https://ss.siaoz.si)" ;;
+    29) confirm_and_run "bash <(curl -Ls https://xray.siaoz.si)" ;;
   esac
  
   pause

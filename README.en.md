@@ -23,7 +23,7 @@
 ## 🚀 Quick Start
 
 ```bash
-bash <(curl -Ls https://vps.shuijiao.de)
+bash <(curl -Ls https://vps.siaoz.si)
 ```
 
 ---
