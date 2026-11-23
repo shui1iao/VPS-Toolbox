@@ -4,7 +4,7 @@ set -euo pipefail
 # VPS Toolbox: interactive script collection for Debian/Ubuntu servers.
 # Third-party scripts run as root. Review commands before confirming.
 
-SCRIPT_VERSION="0.1.3"
+SCRIPT_VERSION="0.1.5"
 
 C_RESET='\033[0m'
 C_RED='\033[1;31m'
@@ -35,18 +35,19 @@ ask_port() {
   local prompt="${1:-请输入 SSH 端口}"
   local port
   while true; do
-    read -rp "$prompt（回车随机）: " port
+    printf '%s（回车随机）: ' "$prompt" >&2
+    read -r port
     if [[ -z "$port" ]]; then
       port="$(random_port)"
-      echo "已随机端口：$port"
+      echo "已随机端口：$port" >&2
       printf '%s' "$port"
       return 0
     fi
-    if [[ "$port" =~ ^[0-9]+$ ]] && (( port >= 1 && port <= 65535 )); then
-      printf '%s' "$port"
+    if [[ "$port" =~ ^[0-9]+$ ]] && (( 10#$port >= 1 && 10#$port <= 65535 )); then
+      printf '%s' "$((10#$port))"
       return 0
     fi
-    echo "端口无效，请输入 1-65535。"
+    echo "端口无效，请输入 1-65535。" >&2
   done
 }
 
@@ -54,10 +55,16 @@ ask_password() {
   local prompt="${1:-请输入 root 密码}"
   local pass pass2
   while true; do
-    read -rsp "$prompt: " pass; echo
-    [[ -n "$pass" ]] || { echo "密码不能为空。"; continue; }
-    read -rsp "再次确认密码: " pass2; echo
-    [[ "$pass" == "$pass2" ]] || { echo "两次输入不一致。"; continue; }
+    printf '%s: ' "$prompt" >&2
+    read -rs pass; echo >&2
+    [[ -n "$pass" ]] || { echo "密码不能为空。" >&2; continue; }
+    if [[ "$pass" == *$'\n'* || "$pass" == *$'\r'* ]]; then
+      echo "密码不能包含换行符。" >&2
+      continue
+    fi
+    printf '再次确认密码: ' >&2
+    read -rs pass2; echo >&2
+    [[ "$pass" == "$pass2" ]] || { echo "两次输入不一致。" >&2; continue; }
     printf '%s' "$pass"
     return 0
   done
@@ -162,7 +169,7 @@ menu_bench() {
   echo "  7) Check.Place -H"
   echo "  8) YABS"
   echo "  9) bench.sh"
-  echo " 10) LemonBench fast"
+  echo " 10) Service Unlock 检测"
   echo
   echo "  b) 返回"
   echo
@@ -218,11 +225,13 @@ menu_security() {
   echo " 27) AnyTLS Manager"
   echo " 28) SS-Rust Manager"
   echo " 29) Xray Manager"
+  echo " 30) Snell Manager"
+  echo " 31) VPS Network Limiter"
   echo
   echo "  b) 返回"
   echo
   read -rp "请选择编号: " choice
-  case "$choice" in b|B) return 0 ;; 23|24|25|26|27|28|29) run_choice "$choice" ;; *) echo "无效编号"; pause ;; esac
+  case "$choice" in b|B) return 0 ;; 23|24|25|26|27|28|29|30|31) run_choice "$choice" ;; *) echo "无效编号"; pause ;; esac
 }
 
 
@@ -234,7 +243,6 @@ net.ipv4.tcp_frto=0
 net.ipv4.tcp_mtu_probing=0
 net.ipv4.tcp_rfc1337=0
 net.ipv4.tcp_sack=1
-net.ipv4.tcp_fack=1
 net.ipv4.tcp_window_scaling=1
 net.ipv4.tcp_adv_win_scale=1
 net.ipv4.tcp_moderate_rcvbuf=1
@@ -258,17 +266,44 @@ sysctl --system'
 BBR_64="${BBR_32//33554432/67108864}"
 
 run_dd_bin456789() {
-  local port pass
+  local port pass ans tmp
   port="$(ask_port '请输入 DD 后 SSH 端口')"
   pass="$(ask_password '请输入 DD 后 root 密码')"
-  confirm_and_run "wget -O reinstall.sh https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh && chmod +x reinstall.sh && ./reinstall.sh debian 13 --password '$pass' --ssh-port '$port' && reboot"
+  echo
+  color "$C_YELLOW" "即将执行："; echo
+  echo "curl -fsSL -o reinstall.sh https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh && ./reinstall.sh debian 13 --password '***' --ssh-port ${port} && reboot"
+  echo
+  read -rp "确认执行？[y/N] " ans
+  case "$ans" in
+    y|Y|yes|YES)
+      tmp="$(mktemp /tmp/reinstall.XXXXXX.sh)"
+      trap 'rm -f -- "$tmp"' RETURN
+      curl -fsSL -o "$tmp" https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+      chmod +x "$tmp"
+      "$tmp" debian 13 --password "$pass" --ssh-port "$port" && reboot
+      ;;
+    *) echo "已取消" ;;
+  esac
 }
 
 run_dd_installnet() {
-  local port pass
+  local port pass ans tmp
   port="$(ask_port '请输入 DD 后 SSH 端口')"
   pass="$(ask_password '请输入 DD 后 root 密码')"
-  confirm_and_run "wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh && bash InstallNET.sh -debian 13 -pwd '$pass' -port '$port'"
+  echo
+  color "$C_YELLOW" "即将执行："; echo
+  echo "curl -fsSL -o InstallNET.sh https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh && bash InstallNET.sh -debian 13 -pwd '***' -port ${port}"
+  echo
+  read -rp "确认执行？[y/N] " ans
+  case "$ans" in
+    y|Y|yes|YES)
+      tmp="$(mktemp /tmp/InstallNET.XXXXXX.sh)"
+      trap 'rm -f -- "$tmp"' RETURN
+      curl -fsSL -o "$tmp" https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh
+      bash "$tmp" -debian 13 -pwd "$pass" -port "$port"
+      ;;
+    *) echo "已取消" ;;
+  esac
 }
 
 run_init() {
@@ -280,6 +315,13 @@ apt install -y curl wget vim nano sudo unzip tar gzip ca-certificates gnupg lsb-
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak.\$(date +%Y%m%d-%H%M%S)
 sed -i -E 's/^#?Port .*/Port ${port}/' /etc/ssh/sshd_config
 if ! grep -q '^Port ' /etc/ssh/sshd_config; then echo 'Port ${port}' >> /etc/ssh/sshd_config; fi
+if systemctl is-active --quiet ssh.socket 2>/dev/null || systemctl is-enabled --quiet ssh.socket 2>/dev/null; then
+  mkdir -p /etc/systemd/system/ssh.socket.d
+  printf '[Socket]\nListenStream=\nListenStream=${port}\n' > /etc/systemd/system/ssh.socket.d/override.conf
+  systemctl daemon-reload
+fi
+sshd -t
+systemctl restart ssh.socket 2>/dev/null || true
 systemctl restart ssh || systemctl restart sshd
 systemctl enable --now cron || true
 echo '初始化完成。SSH 端口：${port}'"
@@ -296,14 +338,14 @@ run_choice() {
     7) confirm_and_run "bash <(curl -sL https://Check.Place) -H" ;;
     8) confirm_and_run "curl -sL yabs.sh | bash" ;;
     9) confirm_and_run "wget -qO- bench.sh | bash" ;;
-    10) confirm_and_run "curl -fsL https://ilemonra.in/LemonBenchIntl | bash -s fast" ;;
+    10) confirm_and_run "bash <(curl -fsSL https://check.siaoz.si)" ;;
     11) confirm_and_run "bash <(curl -sL IP.Check.Place)" ;;
     12) confirm_and_run "bash <(curl -L -s check.unlock.media)" ;;
     13) confirm_and_run "bash <(curl -L -s https://raw.githubusercontent.com/lmc999/RegionRestrictionCheck/main/check.sh)" ;;
     14) confirm_and_run "bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)" ;;
     15) confirm_and_run "curl -sL https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash && apt-get install speedtest -y && speedtest" ;;
     16) confirm_and_run "wget -O latency.sh https://raw.githubusercontent.com/Cd1s/network-latency-tester/main/latency.sh && chmod +x latency.sh && ./latency.sh" ;;
-    17) confirm_and_run "apt install tcptraceroute -y && wget http://www.vdberg.org/~richard/tcpping -O /usr/bin/tcping && chmod +x /usr/bin/tcping" ;;
+    17) confirm_and_run "apt update && apt install -y tcptraceroute && curl -fsSL https://raw.githubusercontent.com/deajan/tcpping/master/tcpping -o /usr/local/bin/tcping && chmod +x /usr/local/bin/tcping" ;;
     18) confirm_and_run "bash <(curl -Ls https://raw.githubusercontent.com/nxtrace/NTrace-core/main/nt_install.sh)" ;;
     19) confirm_and_run "apt install mtr-tiny -y" ;;
     20) confirm_and_run "bash <(curl -Ls https://realm.siaoz.si)" ;;
@@ -315,12 +357,16 @@ run_choice() {
     26) confirm_and_run "apt install fail2ban -y && systemctl enable --now fail2ban && systemctl status fail2ban --no-pager" ;;
     27) confirm_and_run "bash <(curl -Ls https://anytls.siaoz.si)" ;;
     28) confirm_and_run "bash <(curl -Ls https://ss.siaoz.si)" ;;
-    29) confirm_and_run "bash <(curl -Ls https://xray.siaoz.si)" ;;
+    29) confirm_and_run "bash <(curl -fsSL https://xray.siaoz.si)" ;;
+    30) confirm_and_run "bash <(curl -fsSL https://snell.siaoz.si)" ;;
+    31) confirm_and_run "bash <(curl -fsSL https://limit.siaoz.si)" ;;
   esac
  
   pause
 }
 
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+require_root
 while true; do
   main_menu
   case "${choice}" in
@@ -334,3 +380,5 @@ while true; do
     *) echo "无效分类"; pause ;;
   esac
 done
+
+fi
